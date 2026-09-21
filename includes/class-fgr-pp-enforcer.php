@@ -94,9 +94,11 @@ class FGR_PP_Enforcer {
         }
     }
 
-    public function check_woocommerce_account( WP_Error $errors, $user_id ): void {
+    public function check_woocommerce_account( WP_Error $errors, $user_param ): void {
         if ( empty( $_POST['password_1'] ) ) return;
-        $user = get_userdata( (int) $user_id );
+
+        // WooCommerce reicht je nach Version entweder die User-ID oder das WP_User-Objekt durch.
+        $user = ( $user_param instanceof WP_User ) ? $user_param : get_userdata( (int) $user_param );
         if ( ! $user || ! FGR_PP_Validator::roles_require_policy( (array) $user->roles ) ) return;
 
         foreach ( FGR_PP_Validator::check( wp_unslash( $_POST['password_1'] ), $user->user_login, $user->user_email ) as $msg ) {

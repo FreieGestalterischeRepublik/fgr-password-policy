@@ -2,7 +2,7 @@
 /**
  * Plugin Name:  FGR Password Policy
  * Description:  Erzwingt sichere Passwörter für ausgewählte Benutzerrollen. Administratoren sind immer verpflichtend eingeschlossen. Werbefrei.
- * Version:      1.0.0
+ * Version:      1.0.1
  * Author:       Freie Gestalterische Republik
  * Author URI:   https://fgr.design
  * License:      GPL-2.0-or-later
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'FGR_PP_VERSION', '1.0.0' );
+define( 'FGR_PP_VERSION', '1.0.1' );
 define( 'FGR_PP_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'FGR_PP_URL',     plugin_dir_url( __FILE__ ) );
 
