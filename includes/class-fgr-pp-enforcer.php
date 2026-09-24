@@ -3,20 +3,26 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Hängt die Passwort-Prüfung in alle relevanten WordPress-Abläufe ein und
- * erzwingt bei Bestandsbenutzern mit potenziell unsicherem Passwort eine
+ * erzwingt bei Bestandsbenutzern mit tatsächlich unsicherem Passwort eine
  * Änderung beim nächsten Login.
  *
- * Bereits gesetzte Passwort-Hashes können nicht rückwirkend auf ihre Stärke
- * geprüft werden (WordPress speichert keine Klartext-Passwörter). Deshalb
- * markiert das Plugin Bestandsbenutzer betroffener Rollen pauschal als
- * "muss Passwort ändern", sobald ihre Rolle neu in die Richtlinie
- * aufgenommen wird.
+ * Bereits gesetzte Passwort-Hashes können nicht direkt auf ihre Stärke
+ * geprüft werden (WordPress speichert keine Klartext-Passwörter). Der
+ * Klartext liegt aber kurz beim Login-Vorgang selbst vor (POST-Feld, bevor
+ * WordPress ihn gegen den Hash prüft) – deshalb wird die Stärke dort per
+ * "authenticate"-Filter geprüft und das "muss ändern"-Flag nur gesetzt,
+ * wenn das Passwort die aktuellen Kriterien tatsächlich nicht erfüllt.
  */
 class FGR_PP_Enforcer {
 
     const META_MUST_CHANGE = 'fgr_pp_must_change';
 
     public function __construct() {
+        // Login: prüft das tatsächliche (Klartext-)Passwort gegen die Kriterien
+        // und setzt/löscht das "muss ändern"-Flag danach. Priorität 30, damit
+        // WordPress' eigene Passwort-Prüfung (Prio 20) bereits gelaufen ist.
+        add_filter( 'authenticate', [ $this, 'check_password_on_login' ], 30, 3 );
+
         // Admin-Bereich: Profil bearbeiten (eigenes Profil, fremde Benutzer, neuer Benutzer)
         add_filter( 'user_profile_update_errors', [ $this, 'check_profile_update' ], 10, 3 );
 
@@ -106,6 +112,31 @@ class FGR_PP_Enforcer {
         }
     }
 
+    /**
+     * Prüft beim Login das eingegebene Klartext-Passwort gegen die für die
+     * Rolle(n) des Benutzers geltenden Kriterien. Nur bei tatsächlicher
+     * Nichterfüllung wird das "muss ändern"-Flag gesetzt – ein bereits
+     * konformes Passwort (auch ein "altes", vor der Richtlinie gesetztes)
+     * bleibt unangetastet.
+     */
+    public function check_password_on_login( $user, $username, $password ) {
+        if ( ! ( $user instanceof WP_User ) || empty( $password ) ) return $user;
+
+        if ( ! FGR_PP_Validator::roles_require_policy( $user->roles ) ) {
+            delete_user_meta( $user->ID, self::META_MUST_CHANGE );
+            return $user;
+        }
+
+        $errors = FGR_PP_Validator::check( $password, $user->user_login, $user->user_email );
+        if ( $errors ) {
+            update_user_meta( $user->ID, self::META_MUST_CHANGE, 1 );
+        } else {
+            delete_user_meta( $user->ID, self::META_MUST_CHANGE );
+        }
+
+        return $user;
+    }
+
     // =========================================================
     // Flag "muss Passwort ändern" verwalten
     // =========================================================
@@ -120,29 +151,21 @@ class FGR_PP_Enforcer {
     }
 
     /**
-     * Markiert alle Benutzer der übergebenen Rollen als "muss Passwort ändern".
+     * Wird eine Rolle aus der Richtlinie entfernt, entfällt für deren
+     * Benutzer die Pflicht zur Passwort-Änderung (sofern keine ihrer
+     * verbleibenden Rollen noch erfasst ist). Neu hinzugekommene Rollen
+     * werden nicht mehr blind geflaggt – die Prüfung erfolgt stattdessen
+     * automatisch beim nächsten Login (siehe check_password_on_login()).
      */
-    public static function flag_users_for_roles( array $roles ): void {
-        if ( empty( $roles ) ) return;
-        $users = get_users( [ 'role__in' => $roles, 'fields' => 'ID' ] );
-        foreach ( $users as $user_id ) {
-            update_user_meta( $user_id, self::META_MUST_CHANGE, 1 );
-        }
-    }
-
     public static function handle_roles_changed( array $old_roles, array $new_roles ): void {
-        $added = array_diff( $new_roles, $old_roles );
-        self::flag_users_for_roles( $added );
-
         $removed = array_diff( $old_roles, $new_roles );
-        if ( $removed ) {
-            $users = get_users( [ 'role__in' => $removed, 'fields' => 'ID' ] );
-            foreach ( $users as $user_id ) {
-                // Nur löschen, wenn keine der verbleibenden Rollen des Benutzers noch erfasst ist
-                $user = get_userdata( $user_id );
-                if ( $user && ! FGR_PP_Validator::roles_require_policy( $user->roles ) ) {
-                    delete_user_meta( $user_id, self::META_MUST_CHANGE );
-                }
+        if ( ! $removed ) return;
+
+        $users = get_users( [ 'role__in' => $removed, 'fields' => 'ID' ] );
+        foreach ( $users as $user_id ) {
+            $user = get_userdata( $user_id );
+            if ( $user && ! FGR_PP_Validator::roles_require_policy( $user->roles ) ) {
+                delete_user_meta( $user_id, self::META_MUST_CHANGE );
             }
         }
     }

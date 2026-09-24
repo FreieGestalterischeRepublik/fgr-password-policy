@@ -154,10 +154,10 @@ class FGR_PP_Settings {
             <hr>
             <h2>Benutzer-Übersicht</h2>
             <p class="description">
-                Da WordPress Passwörter nur verschlüsselt speichert, kann die Stärke bereits
-                gesetzter Passwörter nicht rückwirkend geprüft werden. Wird eine Rolle neu in
-                die Richtlinie aufgenommen, müssen deren Benutzer beim nächsten Login ein neues,
-                konformes Passwort setzen.
+                Die Stärke eines bestehenden Passworts wird automatisch beim nächsten Login
+                geprüft (dort liegt es kurz im Klartext vor). Nur wenn es die Kriterien
+                tatsächlich nicht erfüllt, muss der Benutzer ein neues, konformes Passwort setzen –
+                bereits sichere Passwörter bleiben unangetastet.
             </p>
             <?php $this->render_user_table(); ?>
         </div>

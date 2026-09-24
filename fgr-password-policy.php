@@ -2,7 +2,7 @@
 /**
  * Plugin Name:  FGR Password Policy
  * Description:  Erzwingt sichere Passwörter für ausgewählte Benutzerrollen. Administratoren sind immer verpflichtend eingeschlossen. Werbefrei.
- * Version:      1.0.1
+ * Version:      1.0.2
  * Author:       Freie Gestalterische Republik
  * Author URI:   https://fgr.design
  * License:      GPL-2.0-or-later
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'FGR_PP_VERSION', '1.0.1' );
+define( 'FGR_PP_VERSION', '1.0.2' );
 define( 'FGR_PP_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'FGR_PP_URL',     plugin_dir_url( __FILE__ ) );
 
@@ -54,9 +54,6 @@ add_action( 'plugins_loaded', function () {
     new FGR_PP_Enforcer();
 } );
 
-// Bei Aktivierung: bestehende Administratoren müssen ihr Passwort beim nächsten
-// Login-Besuch im Dashboard prüfen lassen, da bereits gesetzte Passwort-Hashes
-// nicht nachträglich auf ihre Stärke geprüft werden können.
-register_activation_hook( __FILE__, function () {
-    FGR_PP_Enforcer::flag_users_for_roles( [ 'administrator' ] );
-} );
+// Kein pauschales Markieren bei Aktivierung mehr: Ob ein Passwort die
+// Kriterien erfüllt, wird stattdessen beim nächsten Login anhand des dort
+// kurz vorliegenden Klartext-Passworts geprüft (siehe FGR_PP_Enforcer).
