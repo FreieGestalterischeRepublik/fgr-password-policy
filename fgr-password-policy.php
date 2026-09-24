@@ -2,7 +2,7 @@
 /**
  * Plugin Name:  FGR Password Policy
  * Description:  Erzwingt sichere Passwörter für ausgewählte Benutzerrollen. Administratoren sind immer verpflichtend eingeschlossen. Werbefrei.
- * Version:      1.0.2
+ * Version:      1.0.3
  * Author:       Freie Gestalterische Republik
  * Author URI:   https://fgr.design
  * License:      GPL-2.0-or-later
@@ -13,19 +13,26 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'FGR_PP_VERSION', '1.0.2' );
+define( 'FGR_PP_VERSION', '1.0.3' );
 define( 'FGR_PP_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'FGR_PP_URL',     plugin_dir_url( __FILE__ ) );
 
-// Update-Checker: prüft GitHub auf neue Versionen
+// Update-Checker: fragt die zentrale FGR-Update-API ab (nicht direkt GitHub)
 require_once FGR_PP_DIR . 'lib/plugin-update-checker/plugin-update-checker.php';
 $fgr_pp_updater = YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
-    'https://github.com/FreieGestalterischeRepublik/fgr-password-policy/',
+    'https://fgr-plugins-api.fgr.design/fgr-password-policy.json',
     __FILE__,
     'fgr-password-policy'
 );
-$fgr_pp_updater->setBranch( 'main' );
-$fgr_pp_updater->getVcsApi()->enableReleaseAssets();
+
+// Auto-Update: WordPress' täglicher Update-Cron installiert neue Versionen
+// dieses Plugins automatisch, kein manueller Klick auf jeder Seite nötig.
+add_filter( 'auto_update_plugin', function ( $update, $item ) {
+    if ( isset( $item->slug ) && $item->slug === 'fgr-password-policy' ) {
+        return true;
+    }
+    return $update;
+}, 10, 2 );
 
 require_once FGR_PP_DIR . 'includes/class-fgr-pp-validator.php';
 require_once FGR_PP_DIR . 'includes/class-fgr-pp-enforcer.php';
